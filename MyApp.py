@@ -1,13 +1,14 @@
 import sys
 import os
 from PyQt5.QtWidgets import (
-    QMainWindow, QApplication,
+    QMainWindow, QApplication, QWidget, QTableWidget, QTableWidgetItem,
     QLabel, QCheckBox, QComboBox, QListWidget, QLineEdit, QFileDialog,
     QLineEdit, QSpinBox, QDoubleSpinBox, QSlider, QGridLayout, QPushButton, QStyleOptionTitleBar
 )
 from PyQt5.QtCore import Qt
 from pathlib import Path
 import pandas as pd
+import numpy as np
 import traceback
 
 
@@ -39,11 +40,16 @@ class MainWindow(QMainWindow):
         # check boxes
         self.check_box1 = QCheckBox("Basic Statistics")
         self.check_box2 = QCheckBox("Correlation Matrix")
-        self.check_box3 = QCheckBox("Graph")
+        self.check_box3 = QCheckBox("Graphs")
 
         # run button
         self.run_button = QPushButton('RUN')
+        self.run_button.setFixedSize(50,21)
         self.run_button.clicked.connect(self.run_process)
+
+        # output
+        self.metadata_shape = QLabel()
+        self.metadata_info = QTableWidget()
 
         # Adding widgets to layout
         layout.addWidget(self.file_label, 0, 0)
@@ -53,9 +59,11 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.check_box2, 1, 1)
         layout.addWidget(self.check_box3, 2, 0)
         layout.addWidget(self.run_button, 5, 2)
+        layout.addWidget(self.metadata_shape, 7, 0, 1, 3)
+        layout.addWidget(self.metadata_info, 8, 0, 1, 3)
 
         # Set layout alignment
-        layout.setAlignment(Qt.AlignCenter | Qt.AlignLeft)
+        layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         # Add empty cells to push filename_edit to the left
         layout.setColumnStretch(5, 2)
 
@@ -77,7 +85,6 @@ class MainWindow(QMainWindow):
     def run_process(self):
         file_ext = self.filename_edit.text().split('.')[-1]
         if file_ext == 'xlsx':
-            print("This is excel file")
             try:
                 df = pd.read_excel(self.filename_edit.text())
             except Exception as e:
@@ -85,16 +92,27 @@ class MainWindow(QMainWindow):
                 traceback.print_exc()
                 return
         elif file_ext == 'csv':
-            print("This is csv file")
             try:
                 df = pd.read_csv(self.filename_edit.text(), low_memory=False)
             except Exception as e:
                 print("Error reading CSV file:")
                 traceback.print_exc()
                 return
+        df.describe(include=[np.number])
+        metadata_shape = str(df.shape)
+        self.metadata_shape.setText(metadata_shape)
 
-        print("Shape: {}".format(df.shape))
-        print(df.describe())
+        # create table from
+        metadata_info = df.describe(include=[np.number]).reset_index()
+        self.metadata_info.setRowCount(metadata_info.shape[0])
+        self.metadata_info.setColumnCount(metadata_info.shape[1])
+        for i in range(metadata_info.shape[0]):
+            for j in range(metadata_info.shape[1]):
+                self.metadata_info.setItem(i, j, QTableWidgetItem(str(metadata_info.iloc[i, j])))
+
+        # set table headers
+        headers = [str(col) for col in metadata_info.columns]
+        self.metadata_info.setHorizontalHeaderLabels(headers)
 
 
 if __name__ == '__main__':
@@ -102,4 +120,3 @@ if __name__ == '__main__':
     w = MainWindow()
     w.show()
     app.exec_()
-

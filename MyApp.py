@@ -11,7 +11,6 @@ import pandas as pd
 import numpy as np
 import traceback
 
-
 class MainWindow(QMainWindow):
 
     def __init__(self):
@@ -49,7 +48,9 @@ class MainWindow(QMainWindow):
 
         # output
         self.metadata_shape = QLabel()
-        self.metadata_info = QTableWidget()
+        self.metadata_info_num = QTableWidget()
+        self.metadata_info_char = QTableWidget()
+        self.corr_matrix = QTableWidget()
 
         # Adding widgets to layout
         layout.addWidget(self.file_label, 0, 0)
@@ -60,7 +61,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.check_box3, 2, 0)
         layout.addWidget(self.run_button, 5, 2)
         layout.addWidget(self.metadata_shape, 7, 0, 1, 3)
-        layout.addWidget(self.metadata_info, 8, 0, 1, 3)
+        layout.addWidget(self.metadata_info_num, 8, 0, 1, 3)
+        layout.addWidget(self.corr_matrix, 8, 4, 1, 4)
+        layout.addWidget(self.metadata_info_char, 9, 0, 1, 3)
 
         # Set layout alignment
         layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
@@ -102,17 +105,46 @@ class MainWindow(QMainWindow):
         metadata_shape = str(df.shape)
         self.metadata_shape.setText(metadata_shape)
 
-        # create table from
-        metadata_info = df.describe(include=[np.number]).reset_index()
-        self.metadata_info.setRowCount(metadata_info.shape[0])
-        self.metadata_info.setColumnCount(metadata_info.shape[1])
-        for i in range(metadata_info.shape[0]):
-            for j in range(metadata_info.shape[1]):
-                self.metadata_info.setItem(i, j, QTableWidgetItem(str(metadata_info.iloc[i, j])))
+        # create numeric statistics
+        metadata_info_num = df.describe(include=[np.number], exclude=[object]).reset_index().round(2)
+        self.metadata_info_num.setRowCount(metadata_info_num.shape[0])
+        self.metadata_info_num.setColumnCount(metadata_info_num.shape[1])
+        for i in range(metadata_info_num.shape[0]):
+            for j in range(metadata_info_num.shape[1]):
+                self.metadata_info_num.setItem(i, j, QTableWidgetItem(str(metadata_info_num.iloc[i, j])))
 
         # set table headers
-        headers = [str(col) for col in metadata_info.columns]
-        self.metadata_info.setHorizontalHeaderLabels(headers)
+        headers_num = [str(col) for col in metadata_info_num.columns]
+        self.metadata_info_num.setHorizontalHeaderLabels(headers_num)
+
+        # create category statistics
+        metadata_info_char = df.describe(include=[object], exclude=[np.number]).reset_index()
+        self.metadata_info_char.setRowCount(metadata_info_char.shape[0])
+        self.metadata_info_char.setColumnCount(metadata_info_char.shape[1])
+        for i in range(metadata_info_char.shape[0]):
+            for j in range(metadata_info_char.shape[1]):
+                self.metadata_info_char.setItem(i, j, QTableWidgetItem(str(metadata_info_char.iloc[i, j])))
+
+        # set table headers
+        headers_char = [str(col) for col in metadata_info_char.columns]
+        self.metadata_info_char.setHorizontalHeaderLabels(headers_char)
+
+        # create corr matrix
+        try:
+            corr_matrix = df.select_dtypes(include=np.number).corr().reset_index()
+        except Exception as e:
+            print("Error while creating corr matrix:")
+            traceback.print_exc()
+            return
+        corr_matrix = pd.DataFrame(corr_matrix).round(2)
+        self.corr_matrix.setRowCount(corr_matrix.shape[0])
+        self.corr_matrix.setColumnCount(corr_matrix.shape[1])
+        for i in range(corr_matrix.shape[0]):
+            for j in range(corr_matrix.shape[1]):
+                self.corr_matrix.setItem(i, j, QTableWidgetItem(str(corr_matrix.iloc[i, j])))
+
+        headers_matrix = [str(col) for col in corr_matrix.columns]
+        self.corr_matrix.setHorizontalHeaderLabels(headers_matrix)
 
 
 if __name__ == '__main__':
